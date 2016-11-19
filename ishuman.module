@@ -9,10 +9,13 @@ function ishuman_form_alter(&$form, &$form_state, $form_id) {
         'class' => ['ishuman'],
       ],
       '#element_validate' => ['ishuman_ishuman_validate'],
-      '#attached' => ['js' => [
-        drupal_get_path('module', 'ishuman'),
-      ]],
     ];
+    if (!isset($form['#attached'])) {
+      $form['#attached'] = [];
+    }
+    if (!isset($form['#attached']['js'])) {
+      $form['#attached']['js'] = [];
+    }
     $form['#attached']['js'][drupal_get_path('module', 'ishuman') . '/ishuman.js'] = [];
   }
 }
