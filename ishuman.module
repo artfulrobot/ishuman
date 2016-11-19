@@ -1,0 +1,96 @@
+<?php
+
+function ishuman_form_alter(&$form, &$form_state, $form_id) {
+  if (isset($form['#ishuman'])) {
+    // Protection needed.
+    $form['ishuman'] = [
+      '#type' => 'hidden',
+      '#attributes' => [
+        'class' => ['ishuman'],
+      ],
+      '#element_validate' => ['ishuman_ishuman_validate'],
+      '#attached' => ['js' => [
+        drupal_get_path('module', 'ishuman'),
+      ]],
+    ];
+    $form['#attached']['js'][drupal_get_path('module', 'ishuman') . '/ishuman.js'] = [];
+  }
+}
+
+function ishuman_menu() {
+  $items['ishuman-ajax'] = [
+    'page callback' => 'ishuman_get_key',
+    'access arguments' => 'access content',
+  ];
+  $items['admin/reports/ishuman'] = [
+    'title' => 'Is Human test form',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['ishuman_form_test'],
+    'access arguments' => 'access content',
+  ];
+  return $items;
+}
+
+
+function ishuman_form_test() {
+  return [
+    '#ishuman' => TRUE,
+    'name' => [
+      '#type' => 'textfield',
+      '#title' => 'Name',
+    ],
+    'submit' => [
+      '#type' => 'submit',
+      '#value' => 'Test',
+    ],
+  ];
+}
+function ishuman_form_test_submit($form) {
+  drupal_set_message('Submitted');
+}
+
+function ishuman_ishuman_validate($element, &$form_state, $form) {
+  if (!ishuman_key_is_valid($element['#value'])) {
+    form_set_error('ishuman', t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
+    // or form_error($element, t('Sorry, this form is not available'));
+  }
+}
+
+function ishuman_key_is_valid($key) {
+  if (!preg_match('/^(\d{12})([0-9a-f]{32})$/', $key, $matches)) {
+    // log. @todo.
+    return FALSE;
+  }
+  // how old is it?
+  $too_old = date('YmdHi', strtotime('now - 5 minutes)'));
+  if ($matches[1] < $too_old) {
+    // log too old.
+    return FALSE;
+  }
+  $too_young = date('YmdHi', strtotime('now - 30 seconds'));
+  if ($matches[1] > $too_young) {
+    // log too young.
+    return FALSE;
+  }
+
+  $hash = ishuman_make_key($matches[1]);
+  if ($hash != $key) {
+    // log. attempt to fake key (or ip address change...)
+    return FALSE;
+  }
+
+  // Looks OK then.
+  return TRUE;
+}
+
+function ishuman_make_key($timestamp) {
+  return $timestamp . md5($timestamp . $_SERVER['REMOTE_ADDR'] . variable_get('ishuman_salt', 'you should change this'));
+}
+
+/**
+ * Ajax that returns a key.
+ */
+function ishuman_get_key() {
+  echo ishuman_make_key(date('YmdHi'));
+  exit;
+}
