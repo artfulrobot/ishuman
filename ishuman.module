@@ -1,7 +1,8 @@
 <?php
 
 function ishuman_form_alter(&$form, &$form_state, $form_id) {
-  if (isset($form['#ishuman'])) {
+
+  if (isset($form['#ishuman']) || ishuman_should_protect($form_id)) {
     // Protection needed.
     $form['ishuman'] = [
       '#type' => 'hidden',
@@ -23,17 +24,31 @@ function ishuman_form_alter(&$form, &$form_state, $form_id) {
 function ishuman_menu() {
   $items['ishuman-ajax'] = [
     'page callback' => 'ishuman_get_key',
-    'access arguments' => 'access content',
+    'access arguments' => ['access content'],
   ];
   $items['admin/reports/ishuman'] = [
     'title' => 'Is Human test form',
     'page callback' => 'drupal_get_form',
     'page arguments' => ['ishuman_form_test'],
-    'access arguments' => 'access content',
+    'access arguments' => ['access content'],
+  ];
+  $items['admin/config/content/ishuman'] = [
+    'title' => 'Is Human configuration',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => ['ishuman_form_config'],
+    'access arguments' => ['administer_ishuman'],
   ];
   return $items;
 }
 
+function ishuman_permission() {
+  return [
+    'administer_ishuman' => [
+      'title' => 'Administer Is Human',
+      'description' => 'Administer Is Human anti-spam module',
+    ],
+  ];
+}
 
 function ishuman_form_test() {
   return [
@@ -52,6 +67,42 @@ function ishuman_form_test_submit($form) {
   drupal_set_message('Submitted');
 }
 
+/**
+ * Config form.
+ */
+function ishuman_form_config() {
+  $form = array(
+    'ishuman_salt' => array(
+      '#title' => 'Salt',
+      '#description' => t('Enter some random letters etc.'),
+      '#type' => 'textfield',
+      '#default_value' => variable_get('ishuman_salt', md5(time())),
+    ),
+    'ishuman_protect' => array(
+      '#title' => 'Form Ids to protect (you can use * for wildcard)',
+      '#type' => 'textarea',
+      '#rows' => 8,
+      '#columns' => 60,
+      '#description' => t('Enter form ids one per line'),
+      '#default_value' => variable_get('ishuman_protect',''),
+    ),
+  );
+  return system_settings_form($form);
+}
+
+
+/**
+ * Determine whether this form should be protected.
+ */
+function ishuman_should_protect($form_id) {
+  $protect = array_filter(preg_split('/[\r\n]+/', variable_get('ishuman_protect', '')));
+  foreach ($protect as $pattern) {
+    if ($pattern && fnmatch($pattern, $form_id)) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 function ishuman_ishuman_validate($element, &$form_state, $form) {
   if (!ishuman_key_is_valid($element['#value'])) {
     form_set_error('ishuman', t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
@@ -62,27 +113,47 @@ function ishuman_ishuman_validate($element, &$form_state, $form) {
 function ishuman_key_is_valid($key) {
   if (!preg_match('/^(\d{12})([0-9a-f]{32})$/', $key, $matches)) {
     // log. @todo.
+    ishuman_log($key, "FAIL: regex");
     return FALSE;
   }
   // how old is it?
   $too_old = date('YmdHi', strtotime('now - 5 minutes)'));
   if ($matches[1] < $too_old) {
     // log too old.
+    ishuman_log($key, "FAIL: expired");
     return FALSE;
   }
-  $too_young = date('YmdHi', strtotime('now - 30 seconds'));
+  $too_young = date('YmdHi', strtotime('now - 10 seconds'));
   if ($matches[1] > $too_young) {
     // log too young.
+    ishuman_log($key, "FAIL: inactive");
     return FALSE;
   }
 
   $hash = ishuman_make_key($matches[1]);
   if ($hash != $key) {
     // log. attempt to fake key (or ip address change...)
+    ishuman_log($key, "FAIL: invalid");
+    return FALSE;
+  }
+
+  // Has it been used before?
+  $seen = db_select('ishuman_key')->fields('ishuman_key')
+    ->condition('ihid', $key)
+    ->execute()
+    ->rowCount();
+
+  if ($seen) {
+    ishuman_log($key, "FAIL: seen");
     return FALSE;
   }
 
   // Looks OK then.
+  db_insert('ishuman_key')
+    ->fields([ 'ihid' => $key ])
+    ->execute();
+
+  ishuman_log($key, "OK");
   return TRUE;
 }
 
@@ -96,4 +167,7 @@ function ishuman_make_key($timestamp) {
 function ishuman_get_key() {
   echo ishuman_make_key(date('YmdHi'));
   exit;
+}
+function ishuman_log($key, $message) {
+  error_log("$message, $key");
 }

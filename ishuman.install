@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * Implememnts hook_schema.
+ */
+function ishuman_schema() {
+  $schema['ishuman_key'] = [
+    'description' => 'Ensures keys only used once',
+    'fields' => [
+      'ihid' => [
+        'type' => 'char',
+        'length' => 32+12,
+        'not null' => TRUE,
+        'default' => '',
+      ],
+    ],
+    'primary key' => ['ihid'],
+  ];
+  return $schema;
+}
