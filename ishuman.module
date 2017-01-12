@@ -43,6 +43,10 @@ function ishuman_menu() {
 
 function ishuman_permission() {
   return [
+    'skip_ishuman_test' => [
+      'title' => 'Treat as human',
+      'description' => 'Bypass the Is Human anti-spam module for users with this role',
+    ],
     'administer_ishuman' => [
       'title' => 'Administer Is Human',
       'description' => 'Administer Is Human anti-spam module',
@@ -50,6 +54,9 @@ function ishuman_permission() {
   ];
 }
 
+/**
+ * Form callback for testing.
+ */
 function ishuman_form_test() {
   return [
     '#ishuman' => TRUE,
@@ -104,6 +111,11 @@ function ishuman_should_protect($form_id) {
   return FALSE;
 }
 function ishuman_ishuman_validate($element, &$form_state, $form) {
+  if (user_access('skip_ishuman_test')) {
+    // Skip for permissioned users.
+    return;
+  }
+
   if (!ishuman_key_is_valid($element['#value'])) {
     form_set_error('ishuman', t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
     // or form_error($element, t('Sorry, this form is not available'));
