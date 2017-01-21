@@ -9,7 +9,7 @@ function ishuman_schema() {
     'fields' => [
       'ihid' => [
         'type' => 'char',
-        'length' => 32+12,
+        'length' => 32+14,
         'not null' => TRUE,
         'default' => '',
       ],
@@ -17,4 +17,7 @@ function ishuman_schema() {
     'primary key' => ['ihid'],
   ];
   return $schema;
+}
+function ishuman_update_7100() {
+  db_query('ALTER TABLE ishuman_key MODIFY ihid CHAR(46) NOT NULL');
 }

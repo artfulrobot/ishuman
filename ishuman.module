@@ -56,6 +56,12 @@ function ishuman_form_test() {
     'name' => [
       '#type' => 'textfield',
       '#title' => 'Name',
+      '#required' => TRUE,
+      '#description' => '<p>If you press submit too fast (~10s) it will fail.
+      However if you submit it after 10s it should work. Also test: wait 10s
+      but leave the required field empty. When it fails complete the field and
+      submit again quickly - this second time you should not need to wait
+      10s.</p>'
     ],
     'submit' => [
       '#type' => 'submit',
@@ -108,22 +114,35 @@ function ishuman_ishuman_validate($element, &$form_state, $form) {
     form_set_error('ishuman', t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
     // or form_error($element, t('Sorry, this form is not available'));
   }
+  else {
+    // @todo - this does not work.
+    // User has successfully submitted this form.
+    // Remember this for future.
+    // So send the form with a ready-to-roll key.
+    $key = ishuman_make_key();
+    drupal_set_message("setting to $key");
+    // I'm not sure why this does not seem to work:
+    form_set_value($element, $key, $form_state);
+    // But without this next line the new $key is not output in the form that
+    // will be sent back to the user if there's other validation errors.
+    $form_state['complete form']['ishuman']['#value'] = $key;
+  }
 }
 
 function ishuman_key_is_valid($key) {
-  if (!preg_match('/^(\d{12})([0-9a-f]{32})$/', $key, $matches)) {
+  if (!preg_match('/^(\d{14})([0-9a-f]{32})$/', $key, $matches)) {
     // log. @todo.
     ishuman_log($key, "FAIL: regex");
     return FALSE;
   }
   // how old is it?
-  $too_old = date('YmdHi', strtotime('now - 5 minutes)'));
+  $too_old = date('YmdHis', strtotime('now - 5 minutes)'));
   if ($matches[1] < $too_old) {
     // log too old.
     ishuman_log($key, "FAIL: expired");
     return FALSE;
   }
-  $too_young = date('YmdHi', strtotime('now - 10 seconds'));
+  $too_young = date('YmdHis', strtotime('now - 2 seconds'));
   if ($matches[1] > $too_young) {
     // log too young.
     ishuman_log($key, "FAIL: inactive");
@@ -157,7 +176,16 @@ function ishuman_key_is_valid($key) {
   return TRUE;
 }
 
-function ishuman_make_key($timestamp) {
+/**
+ * Make key.
+ *
+ * Keys contain a datestamp (plain text) and a hash unique to the IP address and the datestamp, plus some salt.
+ *
+ * @param string $timestamp YmdHis timestamp. If not given defaults to now.
+ * @return string
+ */
+function ishuman_make_key($timestamp=NULL) {
+  $timestamp = $timestamp ? $timestamp : date('YmdHis');
   return $timestamp . md5($timestamp . $_SERVER['REMOTE_ADDR'] . variable_get('ishuman_salt', 'you should change this'));
 }
 
@@ -165,7 +193,7 @@ function ishuman_make_key($timestamp) {
  * Ajax that returns a key.
  */
 function ishuman_get_key() {
-  echo ishuman_make_key(date('YmdHi'));
+  echo ishuman_make_key();
   exit;
 }
 function ishuman_log($key, $message) {
