@@ -127,15 +127,13 @@ function ishuman_ishuman_validate($element, &$form_state, $form) {
     // or form_error($element, t('Sorry, this form is not available'));
   }
   else {
-    // @todo - this does not work.
     // User has successfully submitted this form.
     // Remember this for future.
     // So send the form with a ready-to-roll key.
     $key = ishuman_make_key();
-    drupal_set_message("setting to $key");
-    // I'm not sure why this does not seem to work:
+    // I'm not sure why this does not seem to work...
     form_set_value($element, $key, $form_state);
-    // But without this next line the new $key is not output in the form that
+    // ...but without this next line the new $key is not output in the form that
     // will be sent back to the user if there's other validation errors.
     $form_state['complete form']['ishuman']['#value'] = $key;
   }
