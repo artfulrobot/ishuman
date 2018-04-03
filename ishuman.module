@@ -96,7 +96,7 @@ function ishuman_form_config() {
       '#type' => 'textarea',
       '#rows' => 8,
       '#columns' => 60,
-      '#description' => t('Enter form ids one per line'),
+      '#description' => t('Enter form ids one per line. e.g. <code>comment_node_*_form</code>'),
       '#default_value' => variable_get('ishuman_protect',''),
     ),
   );
