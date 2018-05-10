@@ -7,7 +7,7 @@ Drupal.behaviors.ishuman = {
     var update;
     update = function() {
       $.ajax({
-        url: '/ishuman-ajax',
+        url: '/ishuman-ajax?nocache=' + Date.now() + Math.random(),
         success: function(text) {
           inputs.val(text);
         },
