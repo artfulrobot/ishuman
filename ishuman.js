@@ -12,12 +12,15 @@ Drupal.behaviors.ishuman = {
           inputs.val(text);
         },
         error: function() {
-          window.setTimeout(update, 10000);
+          // If error, try again in 5s.
+          window.setTimeout(update, 50000);
         }
       });
     }
     if (inputs.length) {
-      window.setTimeout(update, 10000);
+      // Async load inital key after 2s
+      window.setTimeout(update, 2000);
+      // Update key every 4 mins.
       window.setInterval(update, 4*60000);
     }
   }
