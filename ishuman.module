@@ -207,5 +207,5 @@ function ishuman_get_key() {
   exit;
 }
 function ishuman_log($key, $message) {
-  error_log("$message, $key");
+  error_log("$_SERVER[REMOTE_ADDR]: $message, $key");
 }
