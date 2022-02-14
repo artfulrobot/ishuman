@@ -1,0 +1,20 @@
+ishuman.ajax_endpoint:
+  path: '/ishuman-ajax'
+  defaults:
+    _controller: Drupal\ishuman\Controller\IsHumanController::ajax
+  requirements:
+    _permission: 'access content'
+ishuman.test_form:
+  path: '/admin/reports/ishuman'
+  defaults:
+    _form: Drupal\ishuman\Form\TestForm
+    _title: 'Is Human test form'
+  requirements:
+    _permission: 'access content'
+ishuman.configuration:
+  path: '/admin/config/content/ishuman'
+  defaults:
+    _title: 'Is Human configuration'
+  requirements:
+    _permission: 'administer_ishuman'
+

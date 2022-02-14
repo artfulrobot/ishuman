@@ -1,4 +1,5 @@
 <?php
+use Drupal\Core\Form\FormStateInterface;
 
 function ishuman_form_alter(&$form, &$form_state, $form_id) {
 
@@ -15,92 +16,10 @@ function ishuman_form_alter(&$form, &$form_state, $form_id) {
       $form['#attached'] = [];
     }
     if (!isset($form['#attached']['js'])) {
-      $form['#attached']['js'] = [];
+      $form['#attached']['library'] = [];
     }
-    $form['#attached']['js'][drupal_get_path('module', 'ishuman') . '/ishuman.js'] = [];
+    $form['#attached']['library'][] = 'ishuman/ishuman';
   }
-}
-
-function ishuman_menu() {
-  $items['ishuman-ajax'] = [
-    'page callback' => 'ishuman_get_key',
-    'access arguments' => ['access content'],
-  ];
-  $items['admin/reports/ishuman'] = [
-    'title' => 'Is Human test form',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => ['ishuman_form_test'],
-    'access arguments' => ['access content'],
-  ];
-  $items['admin/config/content/ishuman'] = [
-    'title' => 'Is Human configuration',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => ['ishuman_form_config'],
-    'access arguments' => ['administer_ishuman'],
-  ];
-  return $items;
-}
-
-function ishuman_permission() {
-  return [
-    'skip_ishuman_test' => [
-      'title' => 'Treat as human',
-      'description' => 'Bypass the Is Human anti-spam module for users with this role',
-    ],
-    'administer_ishuman' => [
-      'title' => 'Administer Is Human',
-      'description' => 'Administer Is Human anti-spam module',
-    ],
-  ];
-}
-
-/**
- * Form callback for testing.
- */
-function ishuman_form_test() {
-  return [
-    '#ishuman' => TRUE,
-    'name' => [
-      '#type' => 'textfield',
-      '#title' => 'Name',
-      '#required' => TRUE,
-      '#description' => '<p>If you press submit too fast (~10s) it will fail.
-      However if you submit it after 10s it should work. Also test: wait 10s
-      but leave the required field empty. When it fails complete the field and
-      submit again quickly - this second time you should not need to wait
-      10s.</p>'
-    ],
-    'submit' => [
-      '#type' => 'submit',
-      '#value' => 'Test',
-    ],
-  ];
-}
-function ishuman_form_test_submit($form) {
-  drupal_set_message('Submitted');
-}
-
-/**
- * Config form.
- */
-function ishuman_form_config() {
-  $form = array(
-    'ishuman_salt' => array(
-      '#title' => 'Salt',
-      '#description' => t('Enter some random letters etc.'),
-      '#type' => 'textfield',
-      '#default_value' => variable_get('ishuman_salt', md5(time())),
-    ),
-    'ishuman_protect' => array(
-      '#title' => 'Form Ids to protect (you can use * for wildcard)',
-      '#type' => 'textarea',
-      '#rows' => 8,
-      '#columns' => 60,
-      '#description' => t('Enter form ids one per line. e.g. <code>comment_node_*_form</code>'),
-      '#default_value' => variable_get('ishuman_protect',''),
-    ),
-  );
-  return system_settings_form($form);
 }
 
 
@@ -108,7 +27,9 @@ function ishuman_form_config() {
  * Determine whether this form should be protected.
  */
 function ishuman_should_protect($form_id) {
-  $protect = array_filter(preg_split('/[\r\n]+/', variable_get('ishuman_protect', '')));
+  $config = Drupal::service('config.factory')->get('ishuman.config');
+
+  $protect = array_filter(preg_split('/[\r\n]+/', $config->get('protect')));
   foreach ($protect as $pattern) {
     if ($pattern && fnmatch($pattern, $form_id)) {
       return TRUE;
@@ -116,26 +37,27 @@ function ishuman_should_protect($form_id) {
   }
   return FALSE;
 }
-function ishuman_ishuman_validate($element, &$form_state, $form) {
-  if (user_access('skip_ishuman_test')) {
+function ishuman_ishuman_validate($element, FormStateInterface $form_state, $form) {
+  if (\Drupal::currentUser()->hasPermission('skip_ishuman_test')) {
     // Skip for permissioned users.
     return;
   }
 
   if (!ishuman_key_is_valid($element['#value'])) {
-    form_set_error('ishuman', t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
-    // or form_error($element, t('Sorry, this form is not available'));
+    $form_state->setError($element, t('Sorry, we could not accept this form submission. Please wait 30s and try again.'));
   }
   else {
     // User has successfully submitted this form.
     // Remember this for future.
     // So send the form with a ready-to-roll key.
     $key = ishuman_make_key();
+
+    $form_state->setValueForElement($element, $key);
     // I'm not sure why this does not seem to work...
-    form_set_value($element, $key, $form_state);
+    // form_set_value($element, $key, $form_state);
     // ...but without this next line the new $key is not output in the form that
     // will be sent back to the user if there's other validation errors.
-    $form_state['complete form']['ishuman']['#value'] = $key;
+    // $form_state['complete form']['ishuman']['#value'] = $key;
   }
 }
 
@@ -167,6 +89,7 @@ function ishuman_key_is_valid($key) {
   }
 
   // Has it been used before?
+  /*
   $seen = db_select('ishuman_key')->fields('ishuman_key')
     ->condition('ihid', $key)
     ->execute()
@@ -182,6 +105,7 @@ function ishuman_key_is_valid($key) {
     ->fields([ 'ihid' => $key ])
     ->execute();
 
+   */
   ishuman_log($key, "OK");
   return TRUE;
 }
@@ -195,17 +119,12 @@ function ishuman_key_is_valid($key) {
  * @return string
  */
 function ishuman_make_key($timestamp=NULL) {
+  $config = Drupal::service('config.factory')->get('ishuman.config');
+  $salt = $config->get('salt');
   $timestamp = $timestamp ? $timestamp : date('YmdHis');
-  return $timestamp . md5($timestamp . $_SERVER['REMOTE_ADDR'] . variable_get('ishuman_salt', 'you should change this'));
+  return $timestamp . md5($timestamp . $_SERVER['REMOTE_ADDR'] . $salt);
 }
 
-/**
- * Ajax that returns a key.
- */
-function ishuman_get_key() {
-  echo ishuman_make_key();
-  exit;
-}
 function ishuman_log($key, $message) {
-  error_log("$_SERVER[REMOTE_ADDR]: $message, $key");
+  \Drupal::logger('ishuman')->notice("@message, @key", ['@message' => $message, '@key' => $key]);
 }

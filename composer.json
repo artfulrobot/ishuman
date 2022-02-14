@@ -1,0 +1,22 @@
+{
+  "name": "drupal/ishuman",
+  "description": "Anti spam",
+  "type": "drupal-module",
+  "keywords": [ "anti-spam", "forms", "captcha" ],
+  "homepage": "https://github.com:artfulrobot/ishuman",
+  "license": "AGPL-3.0-or-later",
+  "authors": [
+    {
+      "name": "Rich Lott / Artful Robot",
+      "homepage": "https://artfulrobot.uk",
+      "role": "Maintainer"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/artfulrobot/ishuman/issues",
+    "source": "https://github.com/artfulrobot/ishuman"
+  },
+  "require": {
+    "drupal/core": "^9.0 || ^10.0"
+  }
+}

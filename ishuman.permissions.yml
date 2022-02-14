@@ -1,0 +1,3 @@
+administer_ishuman:
+  title: 'Administer Is Human'
+  restrict access: true

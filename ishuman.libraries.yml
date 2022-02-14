@@ -1,0 +1,4 @@
+ishuman:
+  version: 1.x
+  js:
+    js/ishuman.js: {}

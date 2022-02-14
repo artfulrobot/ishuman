@@ -1,0 +1,6 @@
+name: Is Human
+description: A javascript-based anti spam tool
+type: module
+core_version_requirement: ^9
+package: Custom
+
