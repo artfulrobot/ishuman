@@ -15,6 +15,7 @@ ishuman.configuration:
   path: '/admin/config/content/ishuman'
   defaults:
     _title: 'Is Human configuration'
+    _form: Drupal\ishuman\Form\ConfigForm
   requirements:
     _permission: 'administer_ishuman'
 

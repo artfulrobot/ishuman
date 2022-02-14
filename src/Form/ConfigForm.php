@@ -28,13 +28,13 @@ class ConfigForm extends ConfigFormBase {
   public function buildForm(array $form, FormStateInterface $form_state) {
     $config = $this->config('ishuman.config');
 
-    $form['ishuman_salt'] = [
+    $form['salt'] = [
       '#title' => 'Salt',
       '#description' => t('Enter some random letters etc.'),
       '#type' => 'textfield',
       '#default_value' => $config->get('salt') ?: md5(time()),
     ];
-    $form['ishuman_protect'] = [
+    $form['protect'] = [
       '#title' => 'Form Ids to protect (you can use * for wildcard)',
       '#type' => 'textarea',
       '#rows' => 8,
