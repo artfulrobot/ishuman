@@ -1,5 +1,0 @@
-name = "Is Human"
-description = "A javascript-based anti spam tool"
-core = 7.x
-files[] = ishuman.module
-files[] = ishuman.install
